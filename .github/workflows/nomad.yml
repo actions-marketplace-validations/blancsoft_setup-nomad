@@ -31,6 +31,7 @@ jobs:
         uses: ./
         with:
           version: 1.6.2
+          sha256sum: f6f879a359a667a6b1ca4366abd8383d89118dabd0d28af5bbc4721685ff17b8
 
       - name: Check for gh-dc1 datacenter in server member list
         run:
