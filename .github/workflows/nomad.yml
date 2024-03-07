@@ -1,0 +1,37 @@
+name: nomad
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+        nomad:
+          image: hashicorp/nomad:1.6.2 # <-- this version doesn't matter. See hack below
+          options: >-
+            -e GITHUB_ACTIONS=true
+            -e CI=true
+            hashicorp/nomad:1.6.2
+            agent -dev -dc=gh-dc1 -bind=0.0.0.0
+            #
+          ports:
+            - 4646:4646
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Nomad Action
+        uses: ./
+        with:
+          version: 1.6.2
+
+      - name: Check for gh-dc1 datacenter in server member list
+        run:
+            nomad server members | grep -q gh-dc1

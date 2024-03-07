@@ -1,0 +1,54 @@
+name: 'Setup Nomad'
+description: 'setup your workflow with Hashicorp Nomad CLI'
+branding:
+  icon: 'arrow-right-circle'
+  color: 'gray-dark'
+inputs:
+  version:
+    description: 'Nomad version to use.'
+    required: true
+    default: '1.7.5'
+  sha256sum:
+    description: 'Expected SHA256 checksum of the zip file.'
+    required: false
+    default: ''
+runs:
+    using: 'composite'
+    steps:
+      - name: Check Runner OS
+        if: ${{ runner.os != 'Linux' }}
+        shell: bash
+        run: |
+          echo "::error title=⛔ error hint::Support Linux Only"
+          exit 1
+      - name: Download Nomad
+        shell: bash
+        id: download
+        env:
+          VERSION: ${{ inputs.version }}
+          SHA256SUM: ${{ inputs.sha256sum }}
+        run: |
+          if [ ${{ runner.arch }} = "ARM64" ]; then
+            CLI_ARCH="arm64"
+          elif [ ${{ runner.arch }} = "ARM" ]; then
+            CLI_ARCH="arm"
+          elif [ ${{ runner.arch }} = "X64" ]; then
+            CLI_ARCH="amd64"
+          else
+            CLI_ARCH="amd64"
+          fi
+          MINOR=$(echo "$VERSION" | awk -F '.' {'print $2'})
+          ZIP_FILE_NAME="nomad_${VERSION}_linux_${CLI_ARCH}.zip"
+          URL="https://releases.hashicorp.com/nomad/${VERSION}/${ZIP_FILE_NAME}"
+          SHA_URL="https://releases.hashicorp.com/nomad/${VERSION}/nomad_${VERSION}_SHA256SUMS"
+          if ! [[ "$SHA256SUM" ]] ; then
+            SHA256SUM=$(curl -L "${SHA_URL}" | grep "${ZIP_FILE_NAME}" | cut -d ' ' -f 1)
+          fi
+          curl -H user-agent:blancsoft-setup-nomad-github-action -L "$URL" -o "${ZIP_FILE_NAME}" --max-time 300
+          echo "Expected sha256: $SHA256SUM"
+          echo "Actual sha256: $(sha256sum $ZIP_FILE_NAME)"
+          echo "$SHA256SUM  $ZIP_FILE_NAME" | sha256sum -c
+          unzip "$ZIP_FILE_NAME"
+          rm "$ZIP_FILE_NAME"
+          sudo mv ./nomad /usr/bin
+          nomad --version
